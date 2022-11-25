@@ -31,6 +31,7 @@ const run = async () => {
       const database = client.db("InfinityCorner");
     const productCollections = database.collection("Products");
     const userCollections = database.collection('Users')
+    const orderCollections = database.collection("Orders")
 
      app.get('/api/products/all',async(req,res)=>{
         const products = await productCollections.find({}).toArray()
@@ -83,6 +84,31 @@ const run = async () => {
     
   })
 
+  // make product as advertised
+  app.get('/api/product/adverticed/:productId',async(req,res)=>{
+    try{
+      const id= req.params.productId
+      const updateProduct = await productCollections.findOneAndUpdate({_id: ObjectId(id)},{$set:{isAdverticed:true}})
+      res.json(updateProduct)
+    }catch(e){
+      console.log(e)
+    }
+  })
+
+  // get all adverticed product
+  app.get('/api/product/adverticed/all',async(req,res)=>{
+    try{
+      const filter = {isAdverticed: true}
+      const products = await productCollections.find(filter).toArray()
+      res.json(products)
+    }catch(e){
+      console.log(e)
+    }
+  })
+
+  // get all orders
+  
+
      //   create new user
     app.post("/api/user/create", async (req, res) => {
         const userData = req.body;
@@ -119,7 +145,19 @@ const run = async () => {
       app.delete('/api/product/delete/:productId',async(req,res)=>{
         try{
           const id = req.params.productId
-          const deletedProduct = 
+          const deletedProduct = await productCollections.findOneAndDelete({_id:ObjectId(id)})
+          res.json(deletedProduct)
+        }catch(e){
+          console.log(e)
+        }
+      })
+
+      // delete user by user email
+      app.delete('/api/user/delete/:useremail',async(req,res)=>{
+        try{
+          const email = req.params.useremail
+          const deleteUser = await userCollections.findOneAndDelete({email: email})
+          res.json(deleteUser)
         }catch(e){
           console.log(e)
         }
