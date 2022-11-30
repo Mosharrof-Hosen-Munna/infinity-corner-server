@@ -121,8 +121,8 @@ const run = async () => {
         { _id: ObjectId(orderData.orderProduct._id) },
         { $set: { isAdvertise: false } }
       );
-      const result = await paymentCollections.insertOne(payment);
-      res.send(result);
+      // const result = await paymentCollections.insertOne(payment);
+      // res.send(result);
     });
 
     //  get user by email
