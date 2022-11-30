@@ -117,12 +117,12 @@ const run = async () => {
       const orderData = await orderCollections.findOne({
         _id: ObjectId(orderId),
       });
-      // const updatedProduct = await productCollections.updateOne(
-      //   { _id: ObjectId(orderData.orderProduct._id) },
-      //   { $set: { isAdvertise: false } }
-      // );
-      // // const result = await paymentCollections.insertOne(payment);
-      // // res.send(result);
+      const updatedProduct = await productCollections.updateOne(
+        { _id: ObjectId(orderData.orderProduct._id) },
+        { $set: { isAdvertise: false } }
+      );
+      const result = await paymentCollections.insertOne(payment);
+      res.send(result);
     });
 
     //  get user by email
