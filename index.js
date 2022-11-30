@@ -6,6 +6,7 @@ const cors = require("cors");
 const ObjectId = require("mongodb").ObjectId;
 const jwt = require("jsonwebtoken");
 const { verifyJWT } = require("./middleware");
+const stripe = require("stripe")(process.env.STRIPE_SECRET);
 
 const PORT = process.env.PORT || 5000;
 
@@ -33,6 +34,7 @@ const run = async () => {
     const userCollections = database.collection("Users");
     const orderCollections = database.collection("Orders");
     const reportCollections = database.collection("Reports");
+    const paymentCollections = database.collection("Payments");
 
     // verify admin middleware
     const verifyAdmin = async (req, res, next) => {
@@ -84,6 +86,45 @@ const run = async () => {
       }
     });
 
+    // stripe
+    app.post("/create-payment-intent", async (req, res) => {
+      const order = req.body;
+      const price = order.price;
+      const amount = price * 100;
+
+      if (price) {
+        const paymentIntent = await stripe.paymentIntents.create({
+          currency: "usd",
+          amount: amount,
+          payment_method_types: ["card"],
+        });
+        res.send({
+          clientSecret: paymentIntent.client_secret,
+        });
+      }
+    });
+
+    app.post("/payments", async (req, res) => {
+      const payment = req.body;
+      const orderId = payment.orderId;
+      const transactionId = payment.transactionId;
+      const options = { upsert: true };
+      const updatedOrder = await orderCollections.updateOne(
+        { _id: ObjectId(orderId) },
+        { $set: { paid: true, transactionId: transactionId } },
+        options
+      );
+      const orderData = await orderCollections.findOne({
+        _id: ObjectId(orderId),
+      });
+      const updatedProduct = await productCollections.updateOne(
+        { _id: ObjectId(orderData.orderProduct._id) },
+        { $set: { isAdvertise: false } }
+      );
+      const result = await paymentCollections.insertOne(payment);
+      res.send(result);
+    });
+
     //  get user by email
     app.get("/api/user/:email", async (req, res) => {
       const email = req.params.email;
@@ -93,7 +134,7 @@ const run = async () => {
     });
 
     // find seller user by role
-    app.get("/api/user/seller/all",verifyJWT, async (req, res) => {
+    app.get("/api/user/seller/all", verifyJWT, async (req, res) => {
       const sellerUser = await userCollections
         .find({ role: "seller" })
         .toArray();
@@ -107,7 +148,7 @@ const run = async () => {
     });
 
     // find buyer user by role
-    app.get("/api/user/buyer/all",verifyJWT, async (req, res) => {
+    app.get("/api/user/buyer/all", verifyJWT, async (req, res) => {
       const buyerUsers = await userCollections
         .find({ role: "buyer" })
         .toArray();
@@ -177,11 +218,18 @@ const run = async () => {
       }
     });
 
+    // get order by order id
+    app.get("/api/order/:orderId", async (req, res) => {
+      const id = req.params.orderId;
+      const order = await orderCollections.findOne({ _id: ObjectId(id) });
+      res.json(order);
+    });
+
     // get specific user orders by user email
-    app.get("/api/orders/user/:useremail",verifyJWT, async (req, res) => {
+    app.get("/api/orders/user/:useremail", async (req, res) => {
       try {
         const email = req.params.useremail;
-        const filter = { buyerEmail: email };
+        const filter = { "buyer.email": email };
         const orders = await orderCollections.find(filter).toArray();
         res.json(orders);
       } catch (e) {
@@ -289,21 +337,19 @@ const run = async () => {
     });
 
     // delete report
-    app.delete("/api/reported-product/delete", async(req, res) => {
-      try{
-        const reportId = req.query.reportId
-        const productId = req.query.productId
-        const filter = {_id: ObjectId(reportId)}
-        const deletedReport = await reportCollections.deleteOne(filter)
+    app.delete("/api/reported-product/delete", async (req, res) => {
+      try {
+        const reportId = req.query.reportId;
+        const productId = req.query.productId;
+        const filter = { _id: ObjectId(reportId) };
+        const deletedReport = await reportCollections.deleteOne(filter);
         const deletedProduct = await productCollections.deleteOne({
-          _id: ObjectId(productId)
-        })
-        res.json(deletedReport)
-      }catch(e){
-        console.log(e)
+          _id: ObjectId(productId),
+        });
+        res.json(deletedReport);
+      } catch (e) {
+        console.log(e);
       }
-
-
     });
   } finally {
     // await client.close()
