@@ -93,7 +93,7 @@ const run = async () => {
     });
 
     // find seller user by role
-    app.get("/api/user/seller/all", async (req, res) => {
+    app.get("/api/user/seller/all",verifyJWT, async (req, res) => {
       const sellerUser = await userCollections
         .find({ role: "seller" })
         .toArray();
@@ -107,7 +107,7 @@ const run = async () => {
     });
 
     // find buyer user by role
-    app.get("/api/user/buyer/all", async (req, res) => {
+    app.get("/api/user/buyer/all",verifyJWT, async (req, res) => {
       const buyerUsers = await userCollections
         .find({ role: "buyer" })
         .toArray();
@@ -178,7 +178,7 @@ const run = async () => {
     });
 
     // get specific user orders by user email
-    app.get("/api/orders/user/:useremail", async (req, res) => {
+    app.get("/api/orders/user/:useremail",verifyJWT, async (req, res) => {
       try {
         const email = req.params.useremail;
         const filter = { buyerEmail: email };
